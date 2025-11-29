@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two Sentence Horror</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: white;
+            font-family: Georgia, serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            text-align: center;
+        }
+
+        .story {
+            font-size: 24px;
+            line-height: 1.6;
+            color: black;
+        }
+
+        .first-sentence {
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .second-sentence {
+            display: inline-block;
+            background-color: black;
+            color: black;
+            cursor: pointer;
+            padding: 0 2px;
+            transition: background-color 0.3s ease;
+        }
+
+        .second-sentence.revealed {
+            background-color: transparent;
+        }
+
+        .upvotes {
+            display: block;
+            margin-top: 20px;
+            font-size: 16px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .loading {
+            font-size: 20px;
+            color: #666;
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid black;
+            font-family: Georgia, serif;
+            width: 200px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: black;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-family: Georgia, serif;
+        }
+
+        button:hover {
+            background-color: #333;
+        }
+
+        button:disabled {
+            background-color: #999;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="story" id="story">
+            <div class="loading">Loading horror...</div>
+        </div>
+        <div class="controls" id="controls" style="display: none;">
+            <input type="text" id="subredditInput" placeholder="Subreddit name">
+            <button id="reloadButton">Reload</button>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURATION VARIABLES
+        const DEFAULT_SUBREDDIT = 'TwoSentenceHorror';
+        const TIME_FILTER = 'year'; // Options: hour, day, week, month, year, all
+        const POST_LIMIT = 100; // Number of top posts to fetch
+
+        let stories = [];
+        let currentStory = null;
+        let currentSubreddit = DEFAULT_SUBREDDIT;
+
+        // Fetch stories from Reddit
+        async function fetchStories(subreddit) {
+            try {
+                document.getElementById('story').innerHTML = 
+                    '<div class="loading">Loading horror...</div>';
+                document.getElementById('controls').style.display = 'none';
+                document.getElementById('reloadButton').disabled = true;
+
+                const response = await fetch(
+                    `https://www.reddit.com/r/${subreddit}/top.json?t=${TIME_FILTER}&limit=${POST_LIMIT}`
+                );
+
+                if (!response.ok) {
+                    throw new Error('Subreddit not found or unavailable');
+                }
+
+                const data = await response.json();
+
+                // Filter and process posts
+                stories = data.data.children
+                    .filter(post => {
+                        const p = post.data;
+                        return !p.stickied && 
+                               !p.over_18 && 
+                               p.selftext && 
+                               p.selftext.trim().length > 0 &&
+                               p.selftext !== '[removed]' &&
+                               p.selftext !== '[deleted]';
+                    })
+                    .map(post => ({
+                        title: post.data.title,
+                        text: post.data.selftext.trim(),
+                        score: post.data.score
+                    }));
+
+                if (stories.length > 0) {
+                    currentSubreddit = subreddit;
+                    displayRandomStory();
+                } else {
+                    document.getElementById('story').innerHTML = 
+                        '<div class="loading">No stories found. Try a different subreddit or time period.</div>';
+                    document.getElementById('controls').style.display = 'flex';
+                }
+
+                document.getElementById('reloadButton').disabled = false;
+            } catch (error) {
+                console.error('Error fetching stories:', error);
+                document.getElementById('story').innerHTML = 
+                    '<div class="loading">Failed to load stories. Check the subreddit name and try again.</div>';
+                document.getElementById('controls').style.display = 'flex';
+                document.getElementById('reloadButton').disabled = false;
+            }
+        }
+
+        // Display a random story
+        function displayRandomStory() {
+            if (stories.length === 0) return;
+
+            currentStory = stories[Math.floor(Math.random() * stories.length)];
+
+            const storyDiv = document.getElementById('story');
+            storyDiv.innerHTML = `
+                <span class="first-sentence">${currentStory.title}</span>
+                <span class="second-sentence" id="hiddenSentence">${currentStory.text}</span>
+                <span class="upvotes">${currentStory.score.toLocaleString()} upvotes</span>
+            `;
+
+            document.getElementById('controls').style.display = 'flex';
+
+            // Add click event to reveal
+            const hiddenSentence = document.getElementById('hiddenSentence');
+            hiddenSentence.addEventListener('click', function() {
+                this.classList.add('revealed');
+            });
+        }
+
+        // Event listeners
+        document.getElementById('reloadButton').addEventListener('click', function() {
+            const input = document.getElementById('subredditInput').value.trim();
+            const subreddit = input || currentSubreddit;
+            fetchStories(subreddit);
+        });
+
+        document.getElementById('subredditInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('reloadButton').click();
+            }
+        });
+
+        // Initialize
+        document.getElementById('subredditInput').value = DEFAULT_SUBREDDIT;
+        fetchStories(DEFAULT_SUBREDDIT);
+    </script>
+</body>
+</html>
