@@ -38,13 +38,25 @@ function renderStory(story) {
      </span>
      <span class="upvotes">${story.score.toLocaleString()} upvotes</span>`;
   const el = document.getElementById("hiddenSentence");
+  const mark = el.querySelector('.censor-highlight');
+  let isRevealed = false;
+  
   el.addEventListener('click', function () {
-    el.querySelector('.censor-highlight').textContent = story.text;
-    el.querySelector('.censor-highlight').style.background = 'transparent';
-    el.querySelector('.censor-highlight').style.color = '#181818';
-    el.removeAttribute("title");
+    if (isRevealed) {
+      mark.textContent = censoredText;
+      mark.style.background = '#101010';
+      mark.style.color = '#101010';
+      el.setAttribute("title", "reveal");
+    } else {
+      mark.textContent = story.text;
+      mark.style.background = 'transparent';
+      mark.style.color = '#181818';
+      el.removeAttribute("title");
+    }
+    isRevealed = !isRevealed;
   });
 }
+
 
 
 async function loadStoriesAndShow(resetIdx = true) {
