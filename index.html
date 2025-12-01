@@ -2,200 +2,36 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>two sentence horrors</title>
+  <title>Two Sentence Horrors</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      background: #fff;
-      font-family: Georgia, serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-    }
-    .container {
-      padding: 26px 16px 20px 16px;
-      min-width: 320px;
-      max-width: 420px;
-      width: 100%;
-      text-align: center;
-      border-radius: 12px;
-      box-shadow: 0 2px 12px 3px #f1f1f1;
-      margin: 0;
-    }
-    .story {
-      font-size: 1.2em;
-      line-height: 1.55;
-      color: #181818;
-      margin-bottom: 3px;
-      word-break: break-word;
-    }
-    .first-sentence {
-      font-weight: 500;
-      display: block;
-      margin-bottom: 7px;
-    }
-    .censor-block {
-      background: #101010;
-      color: #101010;
-      font-style: italic;
-      font-weight: 500;
-      transition: color 0.10s, background 0.10s;
-      border-radius: 4px;
-      cursor: pointer;
-      user-select: none;
-      padding: 1px 5px 2px 5px;
-      border-bottom: 2px dotted #222;
-    }
-    .censor-block.revealed {
-      background: transparent;
-      color: #181818;
-      transition: color 0.10s, background 0.10s;
-    }
-    .upvotes {
-      display: block;
-      font-size: 14px;
-      color: #6c6c4e;
-      font-style: italic;
-      margin-top: 7px;
-      margin-bottom: 1px;
-      letter-spacing: 0.1em;
-    }
-    .loading {
-      font-size: 18px;
-      color: #999;
-      margin: 1em 0;
-    }
-    .selectors {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      margin-top: 15px;
-      flex-wrap: wrap;
-    }
-    select {
-      font-family: inherit;
-      padding: 7px 9px;
-      font-size: 15px;
-      border-radius: 4px;
-      border: 1.3px solid #aaa;
-      background: #fcfcfc;
-      margin-bottom: 0;
-    }
-    button {
-      padding: 7px 18px;
-      font-size: 16px;
-      border: none;
-      background: #191919;
-      color: #fff;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-left: 12px;
-      font-family: Georgia, serif;
-      transition: background 0.18s;
-    }
-    button:active {background: #444;}
-  </style>
+  <link rel="icon" type="image/png" href="favicon.jpg">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="container">
-  <div class="story" id="story">
-    <span class="loading">loading horror...</span>
-  </div>
-  <div class="selectors">
-    <select id="subreddit">
-      <option value="TwoSentenceHorror">r/TwoSentenceHorror</option>
-      <option value="badtwosentencehorrors">r/badtwosentencehorrors</option>
-    </select>
-    <select id="sort">
-      <option value="all">popular (all time)</option>
-      <option value="year">popular (recent)</option>
-      <option value="random">random</option>
-    </select>
-    <button id="reload">reload</button>
-  </div>
-</div>
-<script>
-  // config ----------
-  const CORS_PROXY = "https://corsproxy.io/?url=";
-  const POST_LIMIT = 100;
-  let stories = [];
-  let lastSort = "", lastSub = "";
-
-  // shuffle an array
-  function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-  }
-
-  // fetch stories from reddit
-  async function getStories(sub, sort) {
-    const base = `https://www.reddit.com/r/${sub}/`;
-    let url;
-    if (sort === "all" || sort === "year") {
-      url = `${base}top.json?t=${sort}&limit=${POST_LIMIT}`;
-    } else {
-      url = `${base}new.json?limit=${POST_LIMIT}`;
-    }
-    const resp = await fetch(CORS_PROXY + encodeURIComponent(url));
-    if (!resp.ok) throw new Error("Fetch error or CORS fail");
-    const data = await resp.json();
-    return data.data.children
-      .filter(p =>
-        !p.data.stickied &&
-        !p.data.over_18 &&
-        p.data.selftext && p.data.selftext !== '[removed]' && p.data.selftext !== '[deleted]'
-      )
-      .map(p => ({
-        title: p.data.title,
-        text: p.data.selftext.trim(),
-        score: p.data.score
-      }));
-  }
-
-  // render one story
-  function renderStory(story) {
-    document.getElementById("story").innerHTML =
-      `<span class="first-sentence">${story.title}</span>
-       <span class="censor-block" id="hiddenSentence" title="reveal">${story.text}</span>
-       <span class="upvotes">${story.score.toLocaleString()} upvotes</span>`;
-    const el = document.getElementById("hiddenSentence");
-    el.addEventListener('click', function () {
-      el.classList.add("revealed");
-      el.removeAttribute("title");
-    });
-  }
-
-  // load a story (main fetch logic)
-  async function loadStory() {
-    const sub = document.getElementById("subreddit").value;
-    const sort = document.getElementById("sort").value;
-    document.getElementById("story").innerHTML = '<span class="loading">loading horror...</span>';
-    try {
-      // only re-fetch if sort/sub changes or stories array is empty
-      if (sub !== lastSub || sort !== lastSort || !stories.length) {
-        let s = await getStories(sub, sort);
-        if (sort === "random") s = shuffle(s);
-        stories = s;
-        lastSub = sub; lastSort = sort;
-      }
-      if (!stories.length) throw new Error("No stories found.");
-      renderStory(stories[Math.floor(Math.random() * stories.length)]);
-    } catch (e) {
-      document.getElementById("story").innerHTML =
-        `<span class="loading">failed to load: ${e.message}</span>`;
-    }
-  }
-
-  // events ----------
-  document.getElementById("reload").onclick = loadStory;
-  // selecting dropdowns doesn't reload now
-
-  // initial ----------
-  loadStory();
-</script>
+  <!-- <div class="ad ad-left">ADVERTISEMENT</div> 
+  <div class="ad ad-right">ADVERTISEMENT</div> 
+  -->
+  <header>
+    <span>Two Sentence Horrors</span>
+    <a href="/"><span class="creator">created by fisheater</span></a>
+  </header>
+  <main>
+    <div class="container">
+      <div class="story" id="story"><span class="loading">loading horror...</span></div>
+      <div class="selectors">
+        <select id="subreddit">
+          <option value="TwoSentenceHorror">r/TwoSentenceHorror</option>
+          <option value="badtwosentencehorrors">r/badtwosentencehorrors</option>
+        </select>
+        <select id="sort">
+          <option value="year">popular (recent)</option>
+          <option value="all">popular (all time)</option>
+          <option value="random">random</option>
+        </select>
+        <button id="reload">more</button>
+      </div>
+    </div>
+  </main>
+  <script src="script.js"></script>
 </body>
 </html>
