@@ -1,4 +1,8 @@
-const CORS_PROXY = "https://corsproxy.io/?url=";
+const CORS_PROXY = "https://cors.eu.org/";
+// if cors.eu.org is down:
+// https://cors.io/?u=
+// https://corsproxy.io/?url=
+
 const POST_LIMIT = 600;
 let stories = [], index = 0, lastSub = "", lastSort = "";
 
@@ -30,7 +34,7 @@ async function getStories(sub, sort) {
 
 function renderStory(story) {
   const censoredText = story.text.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, ' ');
-  
+
   document.getElementById("story").innerHTML =
     `<span class="first-sentence">${story.title}</span>
      <span class="censor-block" id="hiddenSentence" title="reveal">
@@ -40,7 +44,7 @@ function renderStory(story) {
   const el = document.getElementById("hiddenSentence");
   const mark = el.querySelector('.censor-highlight');
   let isRevealed = false;
-  
+
   el.addEventListener('click', function () {
     if (isRevealed) {
       mark.textContent = censoredText;
@@ -56,8 +60,6 @@ function renderStory(story) {
     isRevealed = !isRevealed;
   });
 }
-
-
 
 async function loadStoriesAndShow(resetIdx = true) {
   const sub = document.getElementById("subreddit").value;
@@ -89,3 +91,78 @@ document.getElementById("subreddit").onchange = () => loadStoriesAndShow();
 document.getElementById("sort").onchange = () => loadStoriesAndShow();
 
 window.onload = () => loadStoriesAndShow();
+
+// about panel functionality
+const infoBtn = document.getElementById('infoBtn');
+const aboutPanel = document.getElementById('aboutPanel');
+const closePanel = document.getElementById('closePanel');
+
+function togglePanel(e) {
+  if (e) e.stopPropagation();
+  if (aboutPanel) {
+    aboutPanel.classList.toggle('closed');
+  }
+}
+
+if (infoBtn) {
+  infoBtn.addEventListener('click', togglePanel);
+}
+
+if (closePanel) {
+  closePanel.addEventListener('click', togglePanel);
+}
+
+// close panel with Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && aboutPanel && !aboutPanel.classList.contains('closed')) {
+    aboutPanel.classList.add('closed');
+  }
+});
+
+// share button functionality
+const shareBtn = document.getElementById("shareBtn");
+const copyToast = document.getElementById("copyToast");
+if (shareBtn && copyToast) {
+  shareBtn.addEventListener("click", () => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      copyToast.classList.add("show");
+      setTimeout(() => {
+        copyToast.classList.remove("show");
+      }, 2000);
+    }).catch(err => {
+      console.error("Failed to copy: ", err);
+    });
+  });
+}
+
+// clicking the favicon 5 times disables the background (easter egg)
+let clickCount = 0;
+let backgroundEnabled = false; // Disabled by default as requested
+
+const headerFavicon = document.querySelector('.header-favicon');
+
+if (headerFavicon) {
+  headerFavicon.addEventListener('click', (e) => {
+    e.preventDefault();
+    clickCount++;
+    console.log(`Favicon clicked! Count: ${clickCount}`);
+
+    // toggle background on 5th click
+    if (clickCount === 5) {
+      backgroundEnabled = !backgroundEnabled;
+      const container = document.querySelector('.game-container'); // Updated selector
+
+      if (backgroundEnabled) {
+        // Show background
+        if (container) container.classList.add('has-background');
+        console.log('Background enabled');
+      } else {
+        // Hide background
+        if (container) container.classList.remove('has-background');
+        console.log('Background disabled');
+      }
+
+      clickCount = 0;
+    }
+  });
+}
